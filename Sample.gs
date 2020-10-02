@@ -79,3 +79,15 @@ function ImportListToSheet(listID, spreadsheetID, includeHeaders, sheetName, sta
   var response = UrlFetchApp.fetch(url)
   return response
 }
+
+function ShowError(message, isScheduled)
+{
+  if (isScheduled)
+  {
+  } else
+  {
+    var ui = SpreadsheetApp.getUi();
+    ui.alert(message)
+  }
+
+}
