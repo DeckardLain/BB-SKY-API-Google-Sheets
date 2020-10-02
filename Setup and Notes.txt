@@ -1,0 +1,67 @@
+Setup
+	- Follow the steps at https://developer.blackbaud.com/skyapi/docs/getting-started to create a SKY Developer account
+	- Create an application: https://developer.blackbaud.com/skyapi/docs/applications/createapp
+	- Copy the Google Spreadsheet here: https://docs.google.com/spreadsheets/d/15UkyOJ0eT2T0PXa9b-ISAI7awOKbRN8akALijmqBjmA/edit?usp=sharing
+		○ Your copy does not need to be shared with anyone
+	- Make the following changes on the spreadsheet:
+		○ Copy/paste the ID of the spreadsheet into cell B1 (it's the part of the URL between https://docs.google.com/spreadsheets/d/ and /edit#gid=0)
+		○ Go to https://developer.blackbaud.com/subscriptions/ and copy the primary access key for Standard APIs into cell B2
+		○ At https://developer.blackbaud.com/, go to Developer Account->My Applications, then View Details for the application you created.
+		○ Copy Application ID (OAuth client_id) into cell B3.
+		○ Copy Application secret (OAuth client-secret) into cell B4.
+		○ Edit the formula in B11, replacing "YOURSTATE" with any string of your choosing.
+	- Create Google Apps Script for handling authentication and access tokens
+		○ Go to https://script.google.com/home and click New Project.
+		○ Copy/paste the code from Authorization and Access Tokens.gs (https://github.com/DeckardLain/BB-SKY-API-Google-Sheets/blob/main/Authorization%20and%20Access%20Tokens.gs)
+		○ Give the project a name at the top.
+		○ Set the following global variables on lines 18-19:
+			§ SPREADSHEETID - Same spreadsheet ID that you put into cell B1 on the spreadsheet.
+			§ YOURSTATE - Same as the YOURSTATE string you chose when editing the spreadsheet earlier.
+		○ Save, then Publish->Deploy as web app.
+			§ Execute the app as = Me.
+			§ Who has access to the app = Anyone, even anonymous
+			§ Click Deploy
+			§ Click Review Permissions
+			§ Follow the prompts in the popup window to authorize the script using your Google account.
+			§ After authorization, Copy Current web app URL and paste it into cell B10 of the spreadsheet.
+	- Create Google Apps Script for connecting to SKY API
+		○ Go to https://script.google.com/home and click New Project again.
+		○ Copy/paste the code from ON List to Sheet.gs (https://github.com/DeckardLain/BB-SKY-API-Google-Sheets/blob/main/ON%20List%20to%20Sheet.gs)
+		○ Name the project
+		○ Set the following global variables:
+			§ YOURKEY - choose a string to use as a security key.  Any spreadsheets that include a script to pull lists from the Blackbaud API will contain this key in readable form, so you can change this key whenever necessary for security purposes.
+			§ AUTHSHEETID - same spreadsheet ID as the one earlier
+			§ YOURSTATE - Same as the YOURSTATE string from earlier
+		○ Save, then Publish->Deploy as web app.
+			§ Execute the app as = Me.
+			§ Who has access to the app = Anyone, even anonymous
+			§ Click Deploy
+			§ Click Review Permissions
+			§ Follow the prompts in the popup window to authorize the script using your Google account.
+			§ After authorization, Copy Current web app URL and save it for the next step
+	- Copy the code in Sample.gs (https://github.com/DeckardLain/BB-SKY-API-Google-Sheets/blob/main/Sample.gs) and save it somewhere.  This is the code you can copy/paste into any script/spreadsheet (Tools->Script Editor).
+		○ The onOpen function is optional, but provides an easy way to run the script via menu.
+		○ Set the global variables in the ImportListToSheet function (lines 56-57):
+			§ WEBAPPURL - This is the URL copied earlier for the ON List to Sheet project.
+			§ KEY - the security key you chose when setting up the ON List to Sheet project.
+		○ Lines 34-40 can be duplicated for each advanced list you want to import into the spreadsheet.
+			§ 34: Display a message to the user for each list being imported, so they know the status, especially if many lists are being imported at once.
+			§ 35: Here is a quick explanation of the function call parameters:
+				□ listID: Blackbaud's list ID - this can be obtained by inspecting the Edit/Copy/Run link for the list in Manage Basic and Advanced Lists (it's the part after "slid=").  If the ON Mod Suite user script is installed, the List ID will be displayed for each list next to the Last Modified date.
+				□ spreadsheetID: Google spreadsheet ID to import the list into.  If left alone, the ssID variable gets the ID of the spreadsheet that the script is attached to, but there are some instances when you might want the data to go to a different sheet.
+				□ includeHeaders: if TRUE, first row will contain the column headers.  If FALSE, first row will be the first row of the list data.
+				□ (Optional) sheetName: Name of the sheet in the file to import the list to. If not specified, will import to the first sheet provided by Google
+				□ (Optional) startRow & startCol: spreadsheet row/column to start putting the data.  If not specified, will start at row 1, column 1.
+		○ Lines 23, 42, and 43 are commented out, but I normally use them to give users information about when the data in the spreadsheet was last updated.
+		○ The ShowError function is provided so that if you schedule updates to run via triggers, any errors have a place to go.  If the script is run from a trigger, it won't be able to display a dialog box.
+	- Create a myschoolapp Role with limited access
+		○ I chose to base the role off of Non-Teaching Staff.  It does not need access to any tasks.
+	- Create a myschoolapp User and add it to the role created above.
+	- For each advanced list that you want accessible to the Google Script, give Run permission to the role created above.
+	- One last step before it's all ready for use: Go back to the spreadsheet and copy the URL in B11.  Paste this into your web browser, and you should get a Blackbaud authorization screen.  Follow the prompts, using the credentials for the account created previously, and if all is working, you should see the Access Token and Refresh Token populate into the spreadsheet.
+
+Notes
+	- Before importing list data, the destination sheet will be cleared, but only starting at the start row/column specified, and only for the number of columns in the list.  You can have additional columns to the right with formulas, and they will remain untouched unless the number of display fields in the list changes.  Do note that the spreadsheet will not automatically fill formulas down if additional rows are added to the bottom of the sheet.
+	- Any time you modify a web app (for example, to change the key), after saving changes, you need to publish the app again for those changes to take effect for scripts that access it.  Be sure to select New from the Project Version drop-down box.
+	- Requests made to the script that contacts SKY API will timeout after 1 minute (this is a Google limitation), so if importing to a spreadsheet with many compute-intensive formulas may timeout and throw errors.  I have worked around this by importing to a temporary spreadsheet first, and then copying the data, but that has introduced its own problems.
+	- The authorization script saves Blackbaud's refresh token, which has a 1 year expiration time, so as long as the script contacts the SKY API more often than once a year, you will never need to use the User Auth URL for Blackbaud authorization after the first time.
