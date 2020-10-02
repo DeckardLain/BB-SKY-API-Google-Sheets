@@ -15,6 +15,16 @@
 
 */
 
+function onOpen() {
+  var spreadsheet = SpreadsheetApp.getActive();
+  
+  var menuItems = [
+    {name: 'Update From Blackbaud', functionName: 'UpdateFromBlackbaud'}
+  ];
+  
+  spreadsheet.addMenu('Actions', menuItems);
+}
+
 function UpdateFromBlackbaud(isScheduled)
 {
   var result
